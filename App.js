@@ -1,18 +1,41 @@
 import React, { Component } from "react";
-import { StyleSheet, Text, View, Button } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput } from 'react-native';
 import MqttService from "./src/core/service/MqttService";
 
-
-export default class App extends Component<Props> {
+export default class App extends Component {
     state = {
         isConnected: false,
-        message: ""
+        message: "",
+        trip: '',
+        route:'',
+        vehicle:'',
+        latitude: null,
+        longitude: null,
     };
 
     componentDidMount() {
+
+
         MqttService.connectClient(
             this.mqttSuccessHandler,
             this.mqttConnectionLostHandler
+        );
+        this.getLocation();
+    }
+
+    getLocation() {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                // console.log("wokeeey");
+                console.log(position);
+                this.setState({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    error: null,
+                });
+            },
+            (error) => console.log("Location error:" + error.message),
+            { enableHighAccuracy: false, timeout: 200000, maximumAge: 1000 },
         );
     }
 
@@ -37,17 +60,45 @@ export default class App extends Component<Props> {
         });
     };
     onPublish = () => {
-        MqttService.publishMessage("bigdata/gps", "Hello from the app");
+        this.getLocation();
+        const message = this.state.route + " " + this.state.trip + " " + this.state.vehicle + " " + this.state.latitude + " " + this.state.longitude;
+        console.log("Message:", message)
+        MqttService.publishMessage("bigdata/gps", message);
     };
+
+
+    sendMessage = () => {
+    setInterval(this.onPublish,10000);
+}
+
+
     render() {
         const { isConnected, message } = this.state;
         return (
             <View style={styles.container}>
                 {!isConnected}
-                <Text style={styles.welcome}>You received message: {message}</Text>
+                <TextInput style={styles.input}
+                           underlineColorAndroid="transparent"
+                           placeholder="Trip id"
+                           placeholderTextColor="#9a73ef"
+                           autoCapitalize="none"
+                           onChangeText={(text) => this.setState({trip: text})}/>
+
+                <TextInput style={styles.input}
+                           underlineColorAndroid="transparent"
+                           placeholder="Route id"
+                           placeholderTextColor="#9a73ef"
+                           autoCapitalize="none"
+                           onChangeText={(text) =>this.setState({route: text})}/>
+                <TextInput style={styles.input}
+                           underlineColorAndroid="transparent"
+                           placeholder="Vehicle id"
+                           placeholderTextColor="#9a73ef"
+                           autoCapitalize="none"
+                           onChangeText={(text) =>this.setState({vehicle: text})}/>
                 <Button
-                    onPress={setInterval(this.onPublish,2000)}
-                    title="Publish"
+                    onPress={this.sendMessage()}
+                    title="Send"
                     color="#841584"
                 />
             </View>
@@ -57,15 +108,23 @@ export default class App extends Component<Props> {
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#F5FCFF"
+        paddingTop: 23
     },
-    welcome: {
-        fontSize: 20,
-        textAlign: "center",
-        margin: 10
+    input: {
+        margin: 15,
+        height: 40,
+        paddingLeft: 10,
+        borderColor: '#7a42f4',
+        borderWidth: 1
+    },
+    submitButton: {
+        backgroundColor: '#7a42f4',
+        padding: 10,
+        margin: 15,
+        height: 40,
+    },
+    submitButtonText: {
+        color: 'white'
     },
     instructions: {
         textAlign: "center",
